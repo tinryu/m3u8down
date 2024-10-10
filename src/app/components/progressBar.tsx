@@ -1,7 +1,7 @@
 "use client";
 import type { CustomFlowbiteTheme } from "flowbite-react";
 import { Progress } from "flowbite-react";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 
 const customTheme: CustomFlowbiteTheme["progress"] = {
   base: "w-full overflow-hidden rounded-lg bg-green-100 relative",
@@ -15,27 +15,32 @@ const customTheme: CustomFlowbiteTheme["progress"] = {
   },
 };
 
-const DynamicProgressBar = (props: any) => {
-  const [progress, setProgress] = useState(props.progresTime ? props.progresTime : 0);
+const DynamicProgressBar = ({ progresTime }: any) => {
+  const [initialProgress] = useState(0); // Assuming we start at 0
+  const [totalDuration, setTotalDuration] = useState<number | null>(null);
+  const intervalTime = 1000;
   const color = "green";
   const size = "xl";
 
   useEffect(() => {
-    const intervalId = setInterval(() => {
-      setProgress(Math.min(progress + 10, 100)); // increment progress by 10% every second
-    }, 1000);
-    return () => clearInterval(intervalId);
-  }, [progress]);
+    if (progresTime >= 100) {
+      // Calculate total duration when progress reaches 100%
+      const rateOfChange = progresTime / ((100 - initialProgress) / intervalTime);
+      setTotalDuration((100 - initialProgress) / rateOfChange * intervalTime);
+    }
+  }, [progresTime, intervalTime, initialProgress]);
 
   return (
-    <Progress
-      theme={customTheme}
-      progress={progress}
-      color={color}
-      size={size}
-      labelProgress
-      className="progresbar"
-    />
+    <>
+      <Progress
+        theme={customTheme}
+        progress={progresTime}
+        color={color}
+        size={size}
+        labelProgress
+        className="progresbar"
+      />
+    </>
   );
 }
 
