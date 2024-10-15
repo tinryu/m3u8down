@@ -1,26 +1,32 @@
-// app/api/socket/route.ts
-import { NextRequest } from 'next/server';
-import { Server } from 'socket.io';
+import { NextRequest, NextResponse } from 'next/server';
+import { Server as SocketIOServer } from 'socket.io';
+import type { Server as HTTPServer } from 'http';
 
-let io: Server | undefined;
+// Ensure a global variable to prevent re-initialization in dev mode
+const globalForSocket = global as unknown as { io?: SocketIOServer };
 
-export const config = {
-  runtime: 'nodejs',
-};
+export const runtime = 'nodejs';
 
+// API Route Handler
 export async function GET(req: NextRequest) {
-  if (!io) {
-    // @ts-ignore: res.socket is available in Next.js runtime
-    const { socket } = res;
+  const httpServer = (req as any).socket?.server as HTTPServer;
 
-    io = new Server(socket.server);
-    
+  if (!httpServer) {
+    return NextResponse.json({ error: 'HTTP server not available.' }, { status: 500 });
+  }
+
+  if (!globalForSocket.io) {
+    const io = new SocketIOServer(httpServer, {
+      path: '/api/socket',
+    });
+
     io.on('connection', (socket) => {
       console.log('A user connected:', socket.id);
 
+      // Listen for 'message' events from clients
       socket.on('message', (msg) => {
         console.log('Message received:', msg);
-        io?.emit('message', msg); // Broadcast message to all connected clients
+        io.emit('message', msg); // Broadcast to all connected clients
       });
 
       socket.on('disconnect', () => {
@@ -28,8 +34,9 @@ export async function GET(req: NextRequest) {
       });
     });
 
-    socket.server.io = io;
+    globalForSocket.io = io; // Store the instance globally
+    console.log('Socket.IO server initialized.');
   }
 
-  return new Response('Socket initialized');
+  return NextResponse.json({ message: 'Socket.IO server running.' });
 }
